@@ -1,8 +1,11 @@
 package com.acmne.tour.controller
 
+import com.acmne.tour.exception.PromocaoNotFoundException
+import com.acmne.tour.model.ErrorMessage
 import com.acmne.tour.model.Promocao
 import com.acmne.tour.service.PromocaoService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -16,16 +19,19 @@ class PromocaoController {
     lateinit var promocaoService: PromocaoService
 
     @GetMapping("/{id}")
-    fun getById(@PathVariable id: Long): ResponseEntity<Promocao?> {
+    fun getById(@PathVariable id: Long): ResponseEntity<Any> {
         var promocao = promocaoService.getById(id)
-        var status = if(promocao == null) HttpStatus.NOT_FOUND else HttpStatus.OK
-        return ResponseEntity(promocao, status)
+        return if(promocao != null)
+            return ResponseEntity(promocao,  HttpStatus.OK)
+        else
+            return ResponseEntity(ErrorMessage("Promoção não localizada", "promocao ${id} nao localizada"), HttpStatus.NOT_FOUND)
     };
 
     @PostMapping()
-    fun create(@RequestBody promocao: Promocao): ResponseEntity<Unit> {
+    fun create(@RequestBody promocao: Promocao): ResponseEntity<Map<String, String>> {
         promocaoService.create(promocao)
-        return ResponseEntity(Unit, HttpStatus.CREATED)
+        val map = mapOf("message" to "OK")
+        return ResponseEntity(map, HttpStatus.CREATED)
     }
 
     @DeleteMapping("/{id}")
@@ -49,17 +55,26 @@ class PromocaoController {
     }
 
     @GetMapping()
-    fun GetAll(@RequestParam(required = false, defaultValue = "") localFilter: String): ResponseEntity<List<Promocao>> {
-        var status = HttpStatus.OK
-        var listaPromocao =  promocaoService.searchByLocal(localFilter)
-        if(listaPromocao.size == 0) {
-            status = HttpStatus.NOT_FOUND
-        }
-        return  ResponseEntity(listaPromocao, status)
+    fun GetAll(@RequestParam(required = false, defaultValue = "1") start: Int,
+               @RequestParam(required = false, defaultValue = "3") size: Int
+    )
+        : ResponseEntity<List<Promocao>> {
+        val list = this.promocaoService.getAll(start, size)
+        val status = if (list.isEmpty()) HttpStatus.NOT_FOUND else HttpStatus.OK
+        return  ResponseEntity(list, status)
     }
 
+    @GetMapping("/count")
+    fun count(): ResponseEntity<Map<String, Long>> =
+        ResponseEntity.ok().body(mapOf("count" to this.promocaoService.count()))
 
 
+    @GetMapping("/ordenados")
+    fun ordenados() = this.promocaoService.getAllSortedByLocal()
+
+    @GetMapping("/menorQue9000")
+    fun getAllMenores(): List<Promocao> =
+        this.promocaoService.getAllByPrecoMenorQuer9000()
 
 
 

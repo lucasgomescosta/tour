@@ -2,44 +2,52 @@ package com.acmne.tour.service.impl
 
 import com.acmne.tour.TourApplication
 import com.acmne.tour.model.Promocao
+import com.acmne.tour.repository.PromocaoRepository
 import com.acmne.tour.service.PromocaoService
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Component
 import java.util.concurrent.ConcurrentHashMap
 
 @Component
-class PromocaoServiceImpl: PromocaoService {
-    companion object{
-        val initialPromocoes = arrayOf(
-                Promocao(1, "Maravilhosa viagem a Cabcun", "Cancun", true, 7, 4200.99),
-                Promocao(2, "Viagem Radical com Rapel e escalada", "Nova Zelandia", false, 12, 1200.0),
-                Promocao(3, "Viagem espiritual", "Tailândia", false, 17, 1500.0)
-        )
-    }
-
-    var promocoes =
-            ConcurrentHashMap<Long, Promocao>(initialPromocoes.associateBy(Promocao::id))
+class PromocaoServiceImpl(val promocaoRepository: PromocaoRepository): PromocaoService {
 
     override fun getById(id: Long): Promocao? {
-        return promocoes[id]
+        return promocaoRepository.findById(id).orElseGet(null)
     }
 
     override fun create(promocao: Promocao) {
-        promocoes[promocao.id] = promocao
+        promocaoRepository.save(promocao)
     }
 
     override fun delete(id: Long) {
-        promocoes.remove(id)
+        promocaoRepository.deleteById(id)
     }
 
     override fun update(id: Long, promocao: Promocao) {
-        delete(id)
         create(promocao)
     }
 
     override fun searchByLocal(localFilter: String): List<Promocao> =
-        promocoes.filter {
-            it.value.local.contains(localFilter, true)
-        }.map (Map.Entry<Long, Promocao>::value).toList()
+       listOf()
+
+    override fun getAll(start: Int, size: Int): List<Promocao> {
+        val pages: Pageable = PageRequest.of(start, size, Sort.by("local").ascending())
+        return promocaoRepository.findAll(pages).toList()
+    }
+
+    override fun count(): Long =
+        promocaoRepository.count()
+
+    override fun getAllSortedByLocal(): List<Promocao> =
+        this.promocaoRepository.findAll(Sort.by("local").descending()).toList()
+
+    override fun getAllByPrecoMenorQuer9000(): List<Promocao> {
+        return this.promocaoRepository.findByPrecoMenorQue()
+    }
+
 
 }
